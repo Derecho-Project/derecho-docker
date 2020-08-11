@@ -1,5 +1,6 @@
+[TOC]
 # derecho-docker
-This project provides a docker container image for testing and developing software with (Derecho)[https://github.com/Derecho-Project/derecho-unified]. Derecho is an open-source C++ distributed computing toolkit that provides strong forms of distributed coordination and consistency at RDMA speeds. Thanks to hardware independent design in Derecho, you can develop or test it without real RDMA hardware.
+This project provides a docker container image for testing and developing software with [Derecho](https://github.com/Derecho-Project/derecho) and [Cascade](https://github.com/Derecho-Project/cascade). Derecho is an open-source C++ distributed computing toolkit that provides strong forms of distributed coordination and consistency at RDMA speeds. Thanks to hardware independent design in Derecho, you can develop or test it without real RDMA hardware. Cascade is a LEGO-like distributed storage hierarchy for Cloud applications. It wraps distributed persistent storage and memory resources into a high-performance and fault-tolerant storage system for applications like IoT.
 
 Our testing is performed primarily on an Intel cluster of 16 nodes equipped with 100Gbps Mellanox RDMA.  Derecho itself can be configured to use this RDMA hardware, or to run over TCP instead.  
 
@@ -17,30 +18,71 @@ Or, if you are interested in customizing this image, clone the repo at: https://
 ```
 $ docker build -t derecho-dev .
 ```
-# To run the image and build Derecho source code:
-Issue the following command to start a container with `derecho-dev` image:
+
+>NOTE: Now that cascade is still private, before pulling cascade, you need to set your github Username and Password in `derecho-dev/build/build-cascade.sh`.
+
+Now derecho and cascade have been compiled and installed in the image, you just need to customize the configuration file before using.
+
+# To configure and run Derecho 
+> NOTE: the old way to configure is [here](#jump), it still works.
+
+With kubernetes, managing multiple nodes is more convenient.
+
+First, create `derecho-workspace` namespace with
+```bash
+kubectl create namespace derecho-workspace
 ```
+Second, start pods withs `derecho-dev` image, for example, we strat 3 pods:
+```bash
+kubectl apply -f derecho-deployment.yaml
+```
+> NOTE: if your kubernetes cluster has many nodes, you need to build image on every node from the Dockerfile or push the image onto dockerhub or something. In the future we may push one.
+
+Then generate `derecho.cfg` for them:
+```bash
+./config-derecho-pods.sh
+```
+This script can set `LEADER_IP`, `LOCAL_IP`, and `LOCAL_ID` in `/derecho.cfg`, and the environment variable `DERECHO_CONF_FILE` has been set to `/derecho.cfg` in Dockerfile.
+
+When you see output like below, you can run tests and applications freely.
+```bash
+On node 10.217.0.105 (id: 0, leader: 10.217.0.105)
+Configuration is successfully generated in file: derecho.cfg.
+The 'DERECHO_CONF_FILE' environment variable has been set to this file: /derecho.cfg
+=========================
+
+On node 10.217.0.77 (id: 1, leader: 10.217.0.105)
+Configuration is successfully generated in file: derecho.cfg.
+The 'DERECHO_CONF_FILE' environment variable has been set to this file: /derecho.cfg
+=========================
+
+On node 10.217.0.53 (id: 2, leader: 10.217.0.105)
+Configuration is successfully generated in file: derecho.cfg.
+The 'DERECHO_CONF_FILE' environment variable has been set to this file: /derecho.cfg
+=========================
+
+On node 10.217.0.15 (id: 3, leader: 10.217.0.105)
+Configuration is successfully generated in file: derecho.cfg.
+The 'DERECHO_CONF_FILE' environment variable has been set to this file: /derecho.cfg
+=========================
+
+On node 10.217.0.82 (id: 4, leader: 10.217.0.105)
+Configuration is successfully generated in file: derecho.cfg.
+The 'DERECHO_CONF_FILE' environment variable has been set to this file: /derecho.cfg
+=========================
+```
+
+
+# To configure and run Derecho (<span id="jump">the old way</span>)
+Issue the following command to start a container with `derecho-dev` image:
+```bash
 $ docker run -it derecho-dev /bin/bash
 ```
-Now, the terminal window should be in the container context. `cd` to home directory(/root/)
-```
-$ cd ~
-```
-Pull the derecho source code and build it [It may take around 6~10 min depending on computer performance]:
-```
-$ build-derecho.sh Release
-```
-By default, `build-derecho.sh` build a pre-release commit in master branch. You can specify another branch, e.g. `persistent-delta` as following:
-```
-$ build-derecho.sh Release persistent-delta
-```
-Please check (derecho project website)[https://github.com/Derecho-Project/derecho-unified] for available branches.
 
-# To configure and run Derecho
 A Derecho application is composed of multiple nodes that talk to each other. Each node is assigned an integer identifier(ID). One of the nodes, usually node `0`, is designated as the leader when system starts. To start a Derecho node, the Derecho component needs to know my ID/IP address and the IP address of the leader. In addition, it needs to know which communication protocol, e.g. TCP/IP or verbs RDMA, and which interfaces to use for talking with other nodes. There are many configuration knobs but
 `config-derecho.sh` helps with the minimum configurations to run derecho.
 
-Let's start with the `bandwith_test`, which evaluates the data throughput of a Derecho group. We want to test a small group with two nodes talking to each other using TCP/IP. Let's repeat the previous steps to run another `derecho-dev` container and build Derecho source code. Now, we `cd` to `/root` in both of the containers. Run `ifconfig` to find their network interface and ip address.
+Let's start with the `bandwith_test`, which evaluates the data throughput of a Derecho group. We want to test a small group with two nodes talking to each other using TCP/IP. Let's repeat the previous steps to run another `derecho-dev` container and build Derecho source code. Run `ifconfig` to find their network interface and ip address.
 ```
 # ifconfig eth0
 eth0      Link encap:Ethernet  HWaddr 02:42:ac:11:00:02  
@@ -53,35 +95,30 @@ eth0      Link encap:Ethernet  HWaddr 02:42:ac:11:00:02
 ```
 Let's assume that the two containers A and B both use interface `eth0`. A's IP address is `172.17.0.2` and B's IP address is `172.17.0.3`. Let's assign node id `0` to A, and `1` to B. And we designate A as the leader. Then issue the following commond to configure node A:
 ```
-# config-derecho.sh
+# /root/config/config-derecho.sh
 Usage: /usr/local/bin/config-derecho.sh <leader ip> <local ip> <local id> [provider,default to 'sockets'] [domain,default to 'eth0']
-# config-derecho.sh 172.17.0.2 172.17.0.2 0 sockets eth0
+# /root/config/config-derecho.sh 172.17.0.2 172.17.0.2 0 sockets eth0
+On node 172.17.0.2 (id: 0, leader: 172.17.0.2)
 Configuration is successfully generated in file: derecho.cfg.
-To use this configuration for your experiment, you can either
-- copy this file side-by-side to the binary, or
-- set the 'DERECHO_CONF_FILE' environment variable to this file:
-     # export DERECHO_CONF_FILE=/root/derecho.cfg
+The 'DERECHO_CONF_FILE' environment variable has been set to this file: /derecho.cfg
+=========================
 ```
-A configuration file:`derecho.cfg` will be generated in the current folder. Then, let's set the environment variable `DERECHO_CONF_FILE` to point to it:
 
-```
-# export DERECHO_CONF_FILE=/root/derecho.cfg
-```
 
 Configure B in a similar way:
 ```
-# config-derecho.sh 172.17.0.2 172.17.0.3 1 sockets eth0
+# /root/config/config-derecho.sh
+Usage: /usr/local/bin/config-derecho.sh <leader ip> <local ip> <local id> [provider,default to 'sockets'] [domain,default to 'eth0']
+# /root/config/config-derecho.sh 172.17.0.2 172.17.0.3 0 sockets eth0
+On node 172.17.0.3 (id: 0, leader: 172.17.0.2)
 Configuration is successfully generated in file: derecho.cfg.
-To use this configuration for your experiment, you can either
-- copy this file side-by-side to the binary, or
-- set the 'DERECHO_CONF_FILE' environment variable to this file:
-     # export DERECHO_CONF_FILE=/root/derecho.cfg
-# export DERECHO_CONF_FILE=/root/derecho.cfg
+The 'DERECHO_CONF_FILE' environment variable has been set to this file: /derecho.cfg
+=========================
 ```
 
 Now, we are ready to run the experiments. In both A and B, go to the folder containing the binary:
 ```
-# cd derecho-unified/Release/applications/tests/performance_tests/
+# cd derecho/build/applications/tests/performance_tests/
 ```
 run `bandwidth_test` in both containers:
 ```
@@ -129,4 +166,9 @@ Note: (Derecho will write group meta data, which we call `views` to disk for fau
 rm -r .plog
 ```
 
-For more experiments and details on Derecho, please refer to the (Derecho project)[https://github.com/Derecho-Project/derecho-unified].
+For more experiments and details on Derecho, please refer to the [Derecho project](https://github.com/Derecho-Project/derecho) and [Cascade project](https://github.com/Derecho-Project/cascade).
+
+# For cascade service
+You can replace the `derecho.cfg.template` and add your own on-critical-datapath library with volumes like `derecho-deployment-with-cfg.yaml` shows.
+
+>TODO: show how to run cascade service.

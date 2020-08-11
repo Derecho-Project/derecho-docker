@@ -10,7 +10,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
-TEMPLATE=/usr/local/share/derecho.cfg.template
+TEMPLATE=/root/config/derecho.cfg.template
 CONFIG=derecho.cfg
 
 LEADER_IP=$1
@@ -39,11 +39,10 @@ cat ${TEMPLATE}| \
 
 ERRCODE=$?
 if [ ${ERRCODE} -eq 0 ]; then
+  echo -e "On node ${LOCAL_IP} (id: ${LOCAL_ID}, leader: ${LEADER_IP})"
   echo -e "${GREEN}Configuration is successfully generated in file: ${CONFIG}."
-  echo -e "To use this configuration for your experiment, you can either"
-  echo -e "- copy this file side-by-side to the binary, or"
-  echo -e "- set the 'DERECHO_CONF_FILE' environment variable to this file:"
-  echo -e "     # ${YELLOW}export DERECHO_CONF_FILE=`pwd`/${CONFIG}${NC}"
+  echo -e "The 'DERECHO_CONF_FILE' environment variable has been set to this file: `pwd`${CONFIG}${NC}"
+  echo -e "=========================\n"
 else
   echo -e "${RED}Configuration generation failed with err:${ERRCODE}.${NC}"
 fi

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: derecho-worker
+  namespace: derecho-workspace
+  labels:
+    app.kubernetes.io/name: derecho-worker
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: derecho-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: derecho-worker
+      name: derecho-worker
+    spec:
+      containers:
+      - name: derecho-worker
+        image: derecho-dev
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests: 
+            cpu: "1000m"
+            memory: "500Mi"
+          limits:
+            cpu: "2000m"
+            memory: "1000Mi"
+        command:
+          - "sleep"
+        args:
+          - "2592000" # 3600 * 24 * 30
+        volumeMounts:
+        - mountPath: /root/config/derecho.cfg.template
+          name: derecho-cfg-template
+        - mountPath: /root/config/libondata_example.so
+          name: ondata-lib
+      restartPolicy: Always
+      tolerations:
+      - key: "node.kubernetes.io/unschedulable"
+        operator: "Exists"
+        effect: "NoSchedule"
+      nodeName: 10.0.0.252 # TODO: just suit my local usage
+      volumes:
+      - name: derecho-cfg-template
+        hostPath:
+          path: /home1/root/derecho-docker/derecho-dev/k8s-config/derecho.cfg.template # TODO: just suit my local usage
+          type: File
+      - name: ondata-lib
+        hostPath:
+          path: /home1/root/derecho-docker/derecho-dev/k8s-config/libondata_example.so # TODO: just suit my local usage
+          type: File
+          
