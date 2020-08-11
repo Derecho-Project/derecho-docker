@@ -3,7 +3,7 @@ FROM ubuntu:16.04
 MAINTAINER scottslewis@gmail.com songweijia@gmail.com myles.l.pan@gmail.com
 
 # use aliyun source mirror to accelerate
-RUN  sed -i s@/archive.ubuntu.com/@/mirrors.tuna.tsinghua.edu.cn/@g /etc/apt/sources.list
+# RUN  sed -i s@/archive.ubuntu.com/@/mirrors.tuna.tsinghua.edu.cn/@g /etc/apt/sources.list
 RUN  apt-get clean
 # add gcc-7 packages
 RUN apt-get -y update
